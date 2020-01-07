@@ -27,7 +27,7 @@ class UserController {
     }
 
     async create(req, res) {
-        let did = req.auth.username;
+        let did = req.auth.user;
         let password = req.auth.password;
 
         // Check user doesn't exist, throw error if found
@@ -52,7 +52,7 @@ class UserController {
 
     // Grant a user access to a user's database
     async createDatabase(req, res) {
-        let did = req.auth.username;
+        let did = req.auth.user;
         let databaseName = req.body.databaseName;
 
         let success = await UserManager.createDatabase(did, databaseName);
