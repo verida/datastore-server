@@ -10,7 +10,7 @@
     "type": "git",
     "url": "git+https://github.com/verida/datastore-server.git"
   },
-  "author": "",
+  "author": "Verida",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/verida/datastore-server/issues"
