@@ -16,9 +16,9 @@ class RequestValidator {
         let message = "\""+applicationName+"\" (" + req.hostname +") is requesting access to " + did;
 
         let address = false;
-        let matches = did.match(/(0x[a-z0-9]*)/);
+        let matches = did.match(/0x([a-z0-9]*)/);
         if (matches.length >1) {
-            address = matches[1].toUpperCase();
+            address = '0x' + matches[1];
         }
 
         // Check for an invalid address
@@ -27,7 +27,18 @@ class RequestValidator {
         }
         
         let signingAddress = ethers.utils.verifyMessage(message, password);
-        return basicAuth.safeCompare(signingAddress, address);
+        let response = basicAuth.safeCompare(signingAddress.toLowerCase(), address.toLowerCase());
+        return response;
+    }
+
+    getUnauthorizedResponse(req) {
+        return {
+            status: "fail",
+            code: 90,
+            data: {
+                "auth": "Invalid credentials supplied"
+            }
+        }
     }
 
 }

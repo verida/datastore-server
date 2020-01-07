@@ -19,7 +19,8 @@ app.use(cors(corsConfig));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(basicAuth({
-  authorizer: requestValidator.authorize
+  authorizer: requestValidator.authorize,
+  unauthorizedResponse: requestValidator.getUnauthorizedResponse
 }));
 app.use(function(req, res, next) {
   // Replace "_" in username with ":" to ensure DID is valid
