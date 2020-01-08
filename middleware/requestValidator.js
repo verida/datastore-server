@@ -13,7 +13,8 @@ class RequestValidator {
     authorize(did, password, req) {
         did = did.replace(/_/g, ":");
         let applicationName = req.headers['application-name'];
-        let message = "\""+applicationName+"\" (" + req.hostname +") is requesting access to " + did;
+        let applicationHost = req.headers['application-host'];
+        let message = "\""+applicationName+"\" (" + applicationHost +") is requesting access to " + did;
 
         let address = false;
         let matches = did.match(/0x([a-z0-9]*)/);
