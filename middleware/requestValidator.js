@@ -14,12 +14,7 @@ class RequestValidator {
         did = did.replace(/_/g, ":");
         
         let applicationName = req.headers['application-name'];
-        let applicationHost = req.headers['application-host'];
-        let signType = req.headers['application-sign-type'];
-    
-
-        signType = signType == "application" ? "Application Data" : "Public Profile";
-        let message = "\""+applicationName+"\" (" + applicationHost +") is requesting access to your " + signType + ".\n\n" + did;
+        let message = "Do you approve access to \""+applicationName+"\"?\n\n" + did;
 
         let address = false;
         let matches = did.match(/0x([a-z0-9]*)/);
@@ -34,6 +29,7 @@ class RequestValidator {
         
         let signingAddress = ethers.utils.verifyMessage(message, password);
         let response = basicAuth.safeCompare(signingAddress.toLowerCase(), address.toLowerCase());
+
         return response;
     }
 

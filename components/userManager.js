@@ -1,5 +1,4 @@
 const CouchDb = require('nano');
-const crypto = require('crypto');
 
 class UserManager {
 
@@ -12,10 +11,9 @@ class UserManager {
      * 
      * @param {} did 
      */
-    async getByDid(did, password) {
+    async getByUsername(username, password) {
         let couch = this._getCouch();
         let usersDb = couch.db.use('_users');
-        let username = this.generateUsername(did);
 
         try {
             let response = await usersDb.get('org.couchdb.user:' + username);
@@ -30,8 +28,7 @@ class UserManager {
         }
     }
 
-    async create(did, password) {
-        let username = this.generateUsername(did);
+    async create(username, password) {
         let couch = this._getCouch();
 
         // Create keyring
@@ -49,15 +46,15 @@ class UserManager {
         let usersDb = couch.db.use('_users');
         try {
             let response = await usersDb.insert(userData);
-            return this.getByDid(did, password);
+            return this.getByUsername(username, password);
         } catch (err) {
             this.error = err;
+            console.log(err);
             return false;
         }
     }
 
-    async createDatabase(did, databaseName, options) {
-        let username = this.generateUsername(did);
+    async createDatabase(username, databaseName, options) {
         let couch = this._getCouch();
 
         let response;
@@ -65,6 +62,7 @@ class UserManager {
         try {
             response = await couch.db.create(databaseName);
         } catch (err) {
+            //console.error("Database existed: "+databaseName);
             // The database may already exist, or may have been deleted so a file
             // already exists.
             // In that case, ignore the error and continue
@@ -93,14 +91,6 @@ class UserManager {
         }, "_design/only_permit_owner");
 
         return true;
-    }
-
-    generateUsername(did) {
-        let hash = crypto.createHmac('sha1', process.env.HASH_KEY);
-        hash.update(did);
-
-        // Username must start with a letter
-        return "v" + hash.digest('hex');
     }
 
     _getCouch() {
