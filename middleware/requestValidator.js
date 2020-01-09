@@ -12,9 +12,14 @@ class RequestValidator {
      */
     authorize(did, password, req) {
         did = did.replace(/_/g, ":");
+        
         let applicationName = req.headers['application-name'];
         let applicationHost = req.headers['application-host'];
-        let message = "\""+applicationName+"\" (" + applicationHost +") is requesting access to " + did;
+        let signType = req.headers['application-sign-type'];
+    
+
+        signType = signType == "application" ? "Application Data" : "Public Profile";
+        let message = "\""+applicationName+"\" (" + applicationHost +") is requesting access to your " + signType + ".\n\n" + did;
 
         let address = false;
         let matches = did.match(/0x([a-z0-9]*)/);

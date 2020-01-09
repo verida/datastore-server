@@ -54,8 +54,9 @@ class UserController {
     async createDatabase(req, res) {
         let did = req.auth.user;
         let databaseName = req.body.databaseName;
+        let options = req.body.options ? req.body.options : {};
 
-        let success = await UserManager.createDatabase(did, databaseName);
+        let success = await UserManager.createDatabase(did, databaseName, options);
         if (success) {
             return res.status(200).send({
                 status: "success"

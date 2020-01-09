@@ -56,32 +56,36 @@ class UserManager {
         }
     }
 
-    async createDatabase(did, databaseName) {
+    async createDatabase(did, databaseName, options) {
         let username = this.generateUsername(did);
         let couch = this._getCouch();
 
         // Create database
         let response = await couch.db.create(databaseName);
 
-        // Create security document so user is the only admin
-        let securityDoc = {
-            admins: {
-                names: [username],
-                roles: []
-            },
-            members: {
-                names: [],
-                roles: []
-            }
-        };
+        if (!options.publicWrite) {
+            // Create security document so user is the only admin
+            let securityDoc = {
+                admins: {
+                    names: [username],
+                    roles: []
+                },
+                members: {
+                    names: [],
+                    roles: []
+                }
+            };
 
-        let db = couch.db.use(databaseName);
-        response = await db.insert(securityDoc, "_security");
+            let db = couch.db.use(databaseName);
+            response = await db.insert(securityDoc, "_security");
+        }
 
         // Create validation document so only user can update their own `_user` record
         response = await db.insert({
             "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (userCtx.name != \""+username+"\") throw({ unauthorized: 'User is not owner' });\n}"
         }, "_design/only_permit_owner");
+
+        console.log(response);
 
         return true;
     }
