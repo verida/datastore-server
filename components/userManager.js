@@ -60,10 +60,18 @@ class UserManager {
         let username = this.generateUsername(did);
         let couch = this._getCouch();
 
+        let response;
         // Create database
-        let response = await couch.db.create(databaseName);
+        try {
+            response = await couch.db.create(databaseName);
+        } catch (err) {
+            // The database may already exist, or may have been deleted so a file
+            // already exists.
+            // In that case, ignore the error and continue
+        }
 
-        if (!options.publicWrite) {
+        let db = couch.db.use(databaseName);
+        if (options.publicWrite !== true) {
             // Create security document so user is the only admin
             let securityDoc = {
                 admins: {
@@ -75,8 +83,7 @@ class UserManager {
                     roles: []
                 }
             };
-
-            let db = couch.db.use(databaseName);
+            
             response = await db.insert(securityDoc, "_security");
         }
 
@@ -84,8 +91,6 @@ class UserManager {
         response = await db.insert({
             "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (userCtx.name != \""+username+"\") throw({ unauthorized: 'User is not owner' });\n}"
         }, "_design/only_permit_owner");
-
-        console.log(response);
 
         return true;
     }
