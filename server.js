@@ -3,6 +3,7 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import router from './routes/index.js';
 import requestValidator from './middleware/requestValidator.js';
+import userManager from './components/userManager';
 require('dotenv').config();
 
 const basicAuth = require('express-basic-auth');
@@ -29,6 +30,8 @@ app.use(function(req, res, next) {
   next();
 });
 app.use(router);
+
+userManager.ensurePublicUser();
 
 const PORT = 5000;
 app.listen(PORT, () => {

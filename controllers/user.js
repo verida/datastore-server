@@ -2,9 +2,7 @@ import UserManager from '../components/userManager';
 import Utils from "../components/utils";
 
 class UserController {
-    // TODO: Enforce CORS, HTTPS
-    // TODO: Configure CouchDB cluster URL, admin credentials
-    // TODO: Init admin credentials for a new DB
+    // TODO: Enforce HTTPS
 
     async get(req, res) {
         let password = req.auth.password;
@@ -27,6 +25,17 @@ class UserController {
         }
     }
 
+    async getPublic(req, res) {
+        return res.status(200).send({
+            status: "success",
+            user: {
+                username: process.env.DB_PUBLIC_USER,
+                password: process.env.DB_PUBLIC_PASS,
+                dsn: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS)
+            }
+        });
+    }
+
     async create(req, res) {
         let username = Utils._generateUsername(req);
         let password = req.auth.password;
@@ -34,7 +43,8 @@ class UserController {
         // Check user doesn't exist, throw error if found
         let user;
         try {
-            user = await UserManager.create(username, password);
+            let response = await UserManager.create(username, password);
+            return UserManager.getByUsername(username, password);
         } catch (err) {
             console.log(err);
         }

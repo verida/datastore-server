@@ -14,7 +14,7 @@ class RequestValidator {
         did = did.replace(/_/g, ":");
         
         let applicationName = req.headers['application-name'];
-        let message = "Do you approve access to \""+applicationName+"\"?\n\n" + did;
+        let message = "Do you approve access to view and update \""+applicationName+"\"?\n\n" + did;
 
         let address = false;
         let matches = did.match(/0x([a-z0-9]*)/);

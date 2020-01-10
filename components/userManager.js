@@ -45,8 +45,7 @@ class UserManager {
 
         let usersDb = couch.db.use('_users');
         try {
-            let response = await usersDb.insert(userData);
-            return this.getByUsername(username, password);
+            return await usersDb.insert(userData);
         } catch (err) {
             this.error = err;
             console.log(err);
@@ -91,6 +90,15 @@ class UserManager {
         }, "_design/only_permit_owner");
 
         return true;
+    }
+
+    /**
+     * Ensure we have a public user in the database for accessing public data
+     */
+    async ensurePublicUser() {
+        let user = process.env.DB_PUBLIC_USER;
+        let pass = process.env.DB_PUBLIC_PASS;
+        return await this.create(user,pass);
     }
 
     _getCouch() {
