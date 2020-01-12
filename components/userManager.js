@@ -48,7 +48,6 @@ class UserManager {
             return await usersDb.insert(userData);
         } catch (err) {
             this.error = err;
-            console.log(err);
             return false;
         }
     }
