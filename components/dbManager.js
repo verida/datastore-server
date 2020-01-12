@@ -22,10 +22,27 @@ class DbManager {
 
         let db = couch.db.use(databaseName);
 
-        return this.configurePermissions(db, options.permissions);
+        return this.configurePermissions(db, username, options.permissions);
     }
 
-    async configurePermissions(db, permissions) {
+    async deleteDatabase(databaseName) {
+        let couch = this._getCouch();
+
+        let response;
+        // Create database
+        try {
+            return await couch.db.destroy(databaseName);
+        } catch (err) {
+            //console.error("Database existed: "+databaseName);
+            // The database may already exist, or may have been deleted so a file
+            // already exists.
+            // In that case, ignore the error and continue
+        }
+    }
+
+    async configurePermissions(db, username, permissions) {
+        permissions = permissions ? permissions : {};
+
         let securityDoc = {
             admins: {
                 names: [],
@@ -72,6 +89,11 @@ class DbManager {
         }
 
         return this._couch;
+    }
+
+    buildDsn(username, password) {
+        let env = process.env;
+        return env.DB_PROTOCOL + "://" + username + ":" + password + "@" + env.DB_HOST + ":" + env.DB_PORT;
     }
 }
 
