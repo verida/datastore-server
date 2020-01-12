@@ -62,15 +62,31 @@ class DbManager {
             securityDoc.admins.names = [username];
             addSecurityDoc = true;
 
-            // Create validation document so only user can update their own `_user` record
+            // Create validation document so only owner can update their own `_user` record
             response = await db.insert({
-                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (userCtx.name != \""+username+"\") throw({ unauthorized: 'User is not owner' });\n}"
+                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (userCtx.name != \""+username+"\") throw({ unauthorized: 'User is not permitted to write to database' });\n}"
+            }, "_design/only_permit_owner");
+        } else if (permissions.write == "public") {
+            securityDoc.admins.names.push(username);
+            securityDoc.members.names.push(process.env.DB_PUBLIC_USER);
+            addSecurityDoc = true;
+
+            let validWriteUsers = JSON.stringify([username, process.env.DB_PUBLIC_USER]);
+
+            // Create validation document so only owner and public user can update their own `_user` record
+            response = await db.insert({
+                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+validWriteUsers+".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}"
             }, "_design/only_permit_owner");
         }
 
         if (permissions.read == "owner") {
+            // Set owner user as a member so they are the only users who can read the database
+            securityDoc.members.names.push(username);
+            addSecurityDoc = true;
+        } else if(permissions.read == "public") {
             // Set public user as a member so they are the only users who can read the database
-            securityDoc.members.names = [username];
+            securityDoc.members.names.push(username);
+            securityDoc.members.names.push(process.env.DB_PUBLIC_USER);;
             addSecurityDoc = true;
         }
 
