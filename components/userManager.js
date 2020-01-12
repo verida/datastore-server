@@ -53,52 +53,33 @@ class UserManager {
         }
     }
 
-    async createDatabase(username, databaseName, options) {
-        let couch = this._getCouch();
-
-        let response;
-        // Create database
-        try {
-            response = await couch.db.create(databaseName);
-        } catch (err) {
-            //console.error("Database existed: "+databaseName);
-            // The database may already exist, or may have been deleted so a file
-            // already exists.
-            // In that case, ignore the error and continue
-        }
-
-        let db = couch.db.use(databaseName);
-        if (options.publicWrite !== true) {
-            // Create security document so user is the only admin
-            let securityDoc = {
-                admins: {
-                    names: [username],
-                    roles: []
-                },
-                members: {
-                    names: [],
-                    roles: []
-                }
-            };
-            
-            response = await db.insert(securityDoc, "_security");
-        }
-
-        // Create validation document so only user can update their own `_user` record
-        response = await db.insert({
-            "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (userCtx.name != \""+username+"\") throw({ unauthorized: 'User is not owner' });\n}"
-        }, "_design/only_permit_owner");
-
-        return true;
-    }
+    
 
     /**
      * Ensure we have a public user in the database for accessing public data
      */
     async ensurePublicUser() {
-        let user = process.env.DB_PUBLIC_USER;
-        let pass = process.env.DB_PUBLIC_PASS;
-        return await this.create(user,pass);
+        let username = process.env.DB_PUBLIC_USER;
+        let password = process.env.DB_PUBLIC_PASS;
+
+        let couch = this._getCouch();
+
+        // Create CouchDB database user matching username and password and save keyring
+        let userData = {
+            _id: "org.couchdb.user:" + username,
+            name: username,
+            password: password,
+            type: "user",
+            roles: []
+        };
+
+        let usersDb = couch.db.use('_users');
+        try {
+            await usersDb.insert(userData);
+            console.log("Public user created");
+        } catch (err) {
+            console.log("Public user not created -- already existed");
+        }
     }
 
     _getCouch() {

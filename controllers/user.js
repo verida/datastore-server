@@ -1,4 +1,5 @@
 import UserManager from '../components/userManager';
+import DbManager from '../components/dbManager';
 import Utils from "../components/utils";
 
 class UserController {
@@ -74,7 +75,7 @@ class UserController {
 
         let success;
         try {
-            success = await UserManager.createDatabase(username, databaseName, options);
+            success = await DbManager.createDatabase(username, databaseName, options);
         } catch (err) {
             return res.status(400).send({
                 status: "fail",
