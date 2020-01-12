@@ -43,56 +43,51 @@ class DbManager {
     async configurePermissions(db, username, permissions) {
         permissions = permissions ? permissions : {};
 
+        let owner = username;
+        let writeUsers = [owner];
+        let readUsers = [owner];
+
+        switch (permissions.write) {
+            case "user":
+                writeUsers = writeUsers.concat(permissions.writeList);
+                break;
+            case "public":
+                writeUsers = writeUsers.concat([process.env.DB_PUBLIC_USER]);
+                break;
+        }
+
+        switch (permissions.read) {
+            case "user":
+                readUsers = readUsers.concat(permissions.readList);
+                break;
+            case "public":
+                readUsers = readUsers.concat([process.env.DB_PUBLIC_USER]);
+                break;
+        }
+
+        let dbMembers = readUsers.concat(writeUsers);
+
         let securityDoc = {
             admins: {
-                names: [],
+                names: [owner],
                 roles: []
             },
             members: {
-                names: [],
+                names: dbMembers,
                 roles: []
             }
         };
-        let addSecurityDoc = false;
 
-        let response;
+        // TODO: Support updating the list of valid users
 
-        if (permissions.write == "owner") {
-            // Set owner as admin
-            securityDoc.admins.names = [username];
-            addSecurityDoc = true;
+        // Create validation document so only owner users in the write list can write to the database
+        let writeUsersJson = JSON.stringify(writeUsers);
+        await db.insert({
+            "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+writeUsersJson+".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}"
+        }, "_design/only_permit_write_users");
 
-            // Create validation document so only owner can update their own `_user` record
-            response = await db.insert({
-                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (userCtx.name != \""+username+"\") throw({ unauthorized: 'User is not permitted to write to database' });\n}"
-            }, "_design/only_permit_owner");
-        } else if (permissions.write == "public") {
-            securityDoc.admins.names.push(username);
-            securityDoc.members.names.push(process.env.DB_PUBLIC_USER);
-            addSecurityDoc = true;
-
-            let validWriteUsers = JSON.stringify([username, process.env.DB_PUBLIC_USER]);
-
-            // Create validation document so only owner and public user can update their own `_user` record
-            response = await db.insert({
-                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+validWriteUsers+".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}"
-            }, "_design/only_permit_owner");
-        }
-
-        if (permissions.read == "owner") {
-            // Set owner user as a member so they are the only users who can read the database
-            securityDoc.members.names.push(username);
-            addSecurityDoc = true;
-        } else if(permissions.read == "public") {
-            // Set public user as a member so they are the only users who can read the database
-            securityDoc.members.names.push(username);
-            securityDoc.members.names.push(process.env.DB_PUBLIC_USER);;
-            addSecurityDoc = true;
-        }
-
-        if (addSecurityDoc) {
-            response = await db.insert(securityDoc, "_security");
-        }
+        // Insert security document to ensure owner is the admin and any other read / write users can access the database
+        await db.insert(securityDoc, "_security");
 
         return true;
     }
