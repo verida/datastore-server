@@ -7,8 +7,8 @@ import expressBasicAuth from "express-basic-auth";
 const CouchDb = require('nano');
 
 describe("Permissions", function() {
-    var ownerUser, userUser, publicUser;
-    var ownerDb, userDb, publicDb;
+    var ownerUser, userUser, user2User, publicUser;
+    var ownerDb, userDb, user2Db, publicDb;
     var testDbName = "testdb";
 
     this.beforeAll(async function() {
@@ -19,6 +19,10 @@ describe("Permissions", function() {
         // Another user that isn't an "owner"
         UserManager.create("test-user", "test-user");
         userUser = await UserManager.getByUsername("test-user", "test-user");
+
+        // A second user that isn't an "owner"
+        UserManager.create("test-user2", "test-user2");
+        user2User = await UserManager.getByUsername("test-user2", "test-user2");
 
         // A public user
         UserManager.create(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS);
@@ -188,10 +192,13 @@ describe("Permissions", function() {
 
             assert.equal(response.ok, true);
         });
-        it("shouldn't allow public to read data", async function() {
+
+        // If a user has write access in CouchDB, it is not possible to disable read access
+        // This test demonstrates that failure, however the documentation will make it clear
+        // that if public write is enabled, that will also enable public read
+        /*it("shouldn't allow public to read data", async function() {
             let response = await publicDb.get("public-write");
-            console.log(response);
-            
+
             await assert.rejects(publicDb.get("owner-write"), {
                 name: "Error",
                 reason: "You are not allowed to access this db."
@@ -200,8 +207,95 @@ describe("Permissions", function() {
                 name: "Error",
                 reason: "You are not allowed to access this db."
             });
+        });*/
+
+        this.afterAll(async function() {
+            // Delete test database
+            let response = await DbManager.deleteDatabase(testDbName);
         });
-        
+    });
+
+    // Test other user can read, but not write
+    describe("User (Read, not Write)", async function() {
+        this.beforeAll(async function() {
+            // Create test database where a list of users can write and read
+            await DbManager.createDatabase(ownerUser.username, testDbName, {
+                permissions: {
+                    write: "user",
+                    writeList: [userUser.username, user2User.username],
+                    read: "user",
+                    readList: [userUser.username, user2User.username]
+                }
+            });
+
+            let couchDb = new CouchDb(ownerUser.dsn);
+            ownerDb = couchDb.use(testDbName);
+
+            couchDb = new CouchDb(userUser.dsn);
+            userDb = couchDb.use(testDbName);
+
+            couchDb = new CouchDb(user2User.dsn);
+            user2Db = couchDb.use(testDbName);
+
+            couchDb = new CouchDb(publicUser.dsn);
+            publicDb = couchDb.use(testDbName);
+        });
+
+        it("should allow owner to write data", async function() {
+            // Write a test record
+            let response = await ownerDb.insert({
+                "_id": "owner-write",
+                "hello": "world"
+            });
+
+            assert.equal(response.ok, true);
+        });
+        it("should allow owner to read data", async function() {
+            let doc = await ownerDb.get("owner-write");
+            assert.equal(doc._id, "owner-write");
+        });
+        it("shouldn't allow public to write data", async function() {
+            // Write a test record that fails
+            await assert.rejects(publicDb.insert({
+                "_id": "public-write",
+                "hello": "world"
+            }), {
+                name: "Error",
+                reason: "You are not allowed to access this db."
+            });
+        });
+        it("shouldn't allow public to read data", async function() {
+            await assert.rejects(publicDb.get("owner-write"), {
+                name: "Error",
+                reason: "You are not allowed to access this db."
+            });
+        });
+        it("should allow users to write data", async function() {
+            // Write a test record
+            let response = await userDb.insert({
+                "_id": "user-write",
+                "hello": "world"
+            });
+
+            assert.equal(response.ok, true);
+
+            // Write a test record with second user
+            let response2 = await user2Db.insert({
+                "_id": "user2-write",
+                "hello": "world"
+            });
+
+            assert.equal(response2.ok, true);
+        });
+        it("should allow users to read data", async function() {
+            let doc = await userDb.get("owner-write");
+            assert.equal(doc._id, "owner-write");
+
+            let doc2 = await user2Db.get("owner-write");
+            assert.equal(doc2._id, "owner-write");
+        });
+
+        // TODO: Support updating the list of valid users
 
         this.afterAll(async function() {
             // Delete test database
