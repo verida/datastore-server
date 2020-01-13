@@ -12,7 +12,7 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 
 let corsConfig = {
-  origin: process.env.CORS_HOST
+//  origin: process.env.CORS_HOST
 };
 
 // Parse incoming requests data
