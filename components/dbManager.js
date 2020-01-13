@@ -14,15 +14,24 @@ class DbManager {
         try {
             response = await couch.db.create(databaseName);
         } catch (err) {
-            //console.error("Database existed: "+databaseName);
             // The database may already exist, or may have been deleted so a file
             // already exists.
             // In that case, ignore the error and continue
+            if (err.error != "file_exists") {
+                throw err;
+            }
         }
 
         let db = couch.db.use(databaseName);
 
-        return this.configurePermissions(db, username, options.permissions);
+        try {
+            await this.configurePermissions(db, username, options.permissions);
+        } catch (err) {
+            console.log("configure error");
+            console.log(err);
+        }
+
+        return true;
     }
 
     async deleteDatabase(databaseName) {
@@ -37,6 +46,7 @@ class DbManager {
             // The database may already exist, or may have been deleted so a file
             // already exists.
             // In that case, ignore the error and continue
+            console.log(err);
         }
     }
 
@@ -78,16 +88,24 @@ class DbManager {
             }
         };
 
+        // Insert security document to ensure owner is the admin and any other read / write users can access the database
+        await db.insert(securityDoc, "_security");
+
         // TODO: Support updating the list of valid users
 
         // Create validation document so only owner users in the write list can write to the database
         let writeUsersJson = JSON.stringify(writeUsers);
-        await db.insert({
-            "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+writeUsersJson+".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}"
-        }, "_design/only_permit_write_users");
 
-        // Insert security document to ensure owner is the admin and any other read / write users can access the database
-        await db.insert(securityDoc, "_security");
+        try {
+            await db.insert({
+                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+writeUsersJson+".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}"
+            }, "_design/only_permit_write_users");
+        } catch (err) {
+            // CouchDB throws a document update conflict without any obvious reason
+            if (err.reason != "Document update conflict.") {
+                throw err;
+            }
+        }
 
         return true;
     }
