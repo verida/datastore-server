@@ -41,13 +41,22 @@ class UserController {
         let username = Utils._generateUsername(req);
         let password = req.auth.password;
 
-        // Check user doesn't exist, throw error if found
-        let user;
-        try {
-            let response = await UserManager.create(username, password);
-            return UserManager.getByUsername(username, password);
-        } catch (err) {
-            console.log(err);
+        // If user exists, simply return it
+        let user = await UserManager.getByUsername(username, password);
+        if (user) {
+            return res.status(400).send({
+                status: "fail",
+                code: 100,
+                data: {
+                    "did": "User already exists"
+                }
+            });
+        }
+
+        let response = await UserManager.create(username, password);
+
+        if (response.ok) {
+            user = await UserManager.getByUsername(username, password);
         }
 
         if (user) {
@@ -61,7 +70,7 @@ class UserController {
                 status: "fail",
                 code: 100,
                 data: {
-                    "did": "User already exists"
+                    "did": "Unable to locate created user"
                 }
             });
         }
