@@ -14,7 +14,12 @@ class RequestValidator {
         did = did.replace(/_/g, ":");
         
         let applicationName = req.headers['application-name'];
+        let profileRequest = req.headers['profile-request'];
+
         let message = "Do you approve access to view and update \""+applicationName+"\"?\n\n" + did;
+        if (profileRequest == 'true') {
+            message = "Do you approve this application to update your Verida public profile?\n\n" + did;
+        }
 
         let address = false;
         let matches = did.match(/0x([a-z0-9]*)/);
