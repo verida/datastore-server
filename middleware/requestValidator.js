@@ -34,7 +34,6 @@ class RequestValidator {
         
         let signingAddress = ethers.utils.verifyMessage(message, password);
         let response = basicAuth.safeCompare(signingAddress.toLowerCase(), address.toLowerCase());
-
         return response;
     }
 

@@ -4,6 +4,7 @@ import bodyParser from 'body-parser';
 import router from './routes/index.js';
 import requestValidator from './middleware/requestValidator.js';
 import userManager from './components/userManager';
+import UserController from './controllers/user';
 require('dotenv').config();
 
 const basicAuth = require('express-basic-auth');
@@ -12,13 +13,14 @@ const basicAuth = require('express-basic-auth');
 const app = express();
 
 let corsConfig = {
-//  origin: process.env.CORS_HOST
+  //origin: process.env.CORS_HOST
 };
 
 // Parse incoming requests data
 app.use(cors(corsConfig));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+app.get('/user/public', UserController.getPublic);
 app.use(basicAuth({
   authorizer: requestValidator.authorize,
   unauthorizedResponse: requestValidator.getUnauthorizedResponse

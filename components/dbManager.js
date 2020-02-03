@@ -54,12 +54,16 @@ class DbManager {
         permissions = permissions ? permissions : {};
 
         let owner = username;
+
+        // Database owner always has full permissions
         let writeUsers = [owner];
         let readUsers = [owner];
+        let deleteUsers = [owner];
 
         switch (permissions.write) {
             case "user":
                 writeUsers = writeUsers.concat(permissions.writeList);
+                deleteUsers = deleteUsers.concat(permissions.deleteList);
                 break;
             case "public":
                 writeUsers = writeUsers.concat([process.env.DB_PUBLIC_USER]);
@@ -95,6 +99,7 @@ class DbManager {
 
         // Create validation document so only owner users in the write list can write to the database
         let writeUsersJson = JSON.stringify(writeUsers);
+        let deleteUsersJson = JSON.stringify(deleteUsers);
 
         try {
             await db.insert({
@@ -104,6 +109,20 @@ class DbManager {
             // CouchDB throws a document update conflict without any obvious reason
             if (err.reason != "Document update conflict.") {
                 throw err;
+            }
+        }
+
+        if (permissions.write == "public") {
+            // If the public has write permissions, disable public from deleting records
+            try {
+                await db.insert({
+                    "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+deleteUsersJson+".indexOf(userCtx.name) == -1 && newDoc._deleted) throw({ unauthorized: 'User is not permitted to delete from database' });\n}"
+                }, "_design/disable_public_delete");
+            } catch (err) {
+                // CouchDB throws a document update conflict without any obvious reason
+                if (err.reason != "Document update conflict.") {
+                    throw err;
+                }
             }
         }
 
