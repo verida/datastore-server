@@ -133,7 +133,12 @@ class DbManager {
         let dsn = this.buildDsn(process.env.DB_USER, process.env.DB_PASS);
 
         if (!this._couch) {
-            this._couch = new CouchDb(dsn);
+            this._couch = new CouchDb({
+                url: dsn,
+                requestDefaults: {
+                    rejectUnauthorized: process.env.DB_REJECT_UNAUTHORIZED_SSL.toLowerCase() != "false"
+                }
+            });
         }
 
         return this._couch;
