@@ -6,9 +6,9 @@ class UserController {
     // TODO: Enforce HTTPS
 
     async get(req, res) {
-        let password = req.auth.password;
+        let signature = req.auth.password;
         let username = Utils._generateUsername(req);
-        let user = await UserManager.getByUsername(username, password);
+        let user = await UserManager.getByUsername(username, signature);
 
         if (user) {
             return res.status(200).send({
@@ -39,10 +39,10 @@ class UserController {
 
     async create(req, res) {
         let username = Utils._generateUsername(req);
-        let password = req.auth.password;
+        let signature = req.auth.password;
 
         // If user exists, simply return it
-        let user = await UserManager.getByUsername(username, password);
+        let user = await UserManager.getByUsername(username, signature);
         if (user) {
             return res.status(400).send({
                 status: "fail",
@@ -53,10 +53,10 @@ class UserController {
             });
         }
 
-        let response = await UserManager.create(username, password);
+        let response = await UserManager.create(username, signature);
 
         if (response.ok) {
-            user = await UserManager.getByUsername(username, password);
+            user = await UserManager.getByUsername(username, signature);
         }
 
         if (user) {

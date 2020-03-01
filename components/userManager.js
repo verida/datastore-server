@@ -1,4 +1,5 @@
 const CouchDb = require('nano');
+import crypto from 'crypto';
 
 class UserManager {
 
@@ -11,12 +12,13 @@ class UserManager {
      * 
      * @param {} did 
      */
-    async getByUsername(username, password) {
+    async getByUsername(username, signature) {
         let couch = this._getCouch();
         let usersDb = couch.db.use('_users');
 
         try {
             let response = await usersDb.get('org.couchdb.user:' + username);
+            let password = crypto.createHash('sha256').update(signature).digest("hex");
             return {
                 username: username,
                 dsn: this.buildDsn(username, password),
@@ -28,13 +30,11 @@ class UserManager {
         }
     }
 
-    async create(username, password) {
+    async create(username, signature) {
         let couch = this._getCouch();
+        let password = crypto.createHash('sha256').update(signature).digest("hex");
 
-        // Create keyring
-        let keyRing = {"key": "ring"};
-
-        // Create CouchDB database user matching username and password and save keyring
+        // Create CouchDB database user matching username and password
         let userData = {
             _id: "org.couchdb.user:" + username,
             name: username,

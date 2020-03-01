@@ -10,7 +10,7 @@ class RequestValidator {
      * @param {*} password 
      * @param {*} req 
      */
-    authorize(did, password, req) {
+    authorize(did, signature, req) {
         did = did.replace(/_/g, ":");
         
         let applicationName = req.headers['application-name'];
@@ -32,7 +32,7 @@ class RequestValidator {
             return false;
         }
         
-        let signingAddress = ethers.utils.verifyMessage(message, password);
+        let signingAddress = ethers.utils.verifyMessage(message, signature);
         let response = basicAuth.safeCompare(signingAddress.toLowerCase(), address.toLowerCase());
         return response;
     }
