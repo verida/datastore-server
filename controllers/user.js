@@ -7,7 +7,7 @@ class UserController {
 
     async get(req, res) {
         let signature = req.auth.password;
-        let username = Utils._generateUsername(req);
+        let username = Utils.generateUsernameFromRequest(req);
         let user = await UserManager.getByUsername(username, signature);
 
         if (user) {
@@ -38,7 +38,7 @@ class UserController {
     }
 
     async create(req, res) {
-        let username = Utils._generateUsername(req);
+        let username = Utils.generateUsernameFromRequest(req);
         let signature = req.auth.password;
 
         // If user exists, simply return it
@@ -78,13 +78,13 @@ class UserController {
 
     // Grant a user access to a user's database
     async createDatabase(req, res) {
-        let username = Utils._generateUsername(req);
+        let username = Utils.generateUsernameFromRequest(req);
         let databaseName = req.body.databaseName;
         let options = req.body.options ? req.body.options : {};
 
         let success;
         try {
-            success = await DbManager.createDatabase(username, databaseName, options);
+            success = await DbManager.createDatabase(username, databaseName, req.headers['application-name'], options);
         } catch (err) {
             return res.status(400).send({
                 status: "fail",

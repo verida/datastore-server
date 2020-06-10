@@ -1,4 +1,6 @@
 const CouchDb = require('nano');
+import Utils from './utils';
+import _ from 'lodash';
 
 class DbManager {
 
@@ -6,7 +8,7 @@ class DbManager {
         this.error = null;
     }
 
-    async createDatabase(username, databaseName, options) {
+    async createDatabase(username, databaseName, applicationName, options) {
         let couch = this._getCouch();
 
         let response;
@@ -25,7 +27,7 @@ class DbManager {
         let db = couch.db.use(databaseName);
 
         try {
-            await this.configurePermissions(db, username, options.permissions);
+            await this.configurePermissions(db, username, applicationName, options.permissions);
         } catch (err) {
             console.log("configure error");
             console.log(err);
@@ -50,7 +52,7 @@ class DbManager {
         }
     }
 
-    async configurePermissions(db, username, permissions) {
+    async configurePermissions(db, username, applicationName, permissions) {
         permissions = permissions ? permissions : {};
 
         let owner = username;
@@ -60,10 +62,12 @@ class DbManager {
         let readUsers = [owner];
         let deleteUsers = [owner];
 
+        // @todo Support modifying user lists after db has been created
+
         switch (permissions.write) {
-            case "user":
-                writeUsers = writeUsers.concat(permissions.writeList);
-                deleteUsers = deleteUsers.concat(permissions.deleteList);
+            case "users":
+                writeUsers = _.union(writeUsers, Utils.didsToUsernames(permissions.writeList, applicationName));
+                deleteUsers = _.union(deleteUsers, Utils.didsToUsernames(permissions.deleteList, applicationName));
                 break;
             case "public":
                 writeUsers = writeUsers.concat([process.env.DB_PUBLIC_USER]);
@@ -71,15 +75,15 @@ class DbManager {
         }
 
         switch (permissions.read) {
-            case "user":
-                readUsers = readUsers.concat(permissions.readList);
+            case "users":
+                readUsers = _.union(readUsers, Utils.didsToUsernames(permissions.readList, applicationName));
                 break;
             case "public":
                 readUsers = readUsers.concat([process.env.DB_PUBLIC_USER]);
                 break;
         }
 
-        let dbMembers = readUsers.concat(writeUsers);
+        let dbMembers = _.union(readUsers, writeUsers);
 
         let securityDoc = {
             admins: {
