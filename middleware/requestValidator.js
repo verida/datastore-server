@@ -1,5 +1,5 @@
 const basicAuth = require('express-basic-auth');
-const ethers = require('ethers')
+import DIDHelper from '@verida/did-helper';
 
 class RequestValidator {
 
@@ -21,20 +21,14 @@ class RequestValidator {
             message = "Do you approve this application to update your Verida public profile?\n\n" + did;
         }
 
-        let address = false;
-        let matches = did.match(/0x([a-z0-9]*)/);
-        if (matches.length >1) {
-            address = '0x' + matches[1];
-        }
+        const signingAddress = DIDHelper.verifySignedMessage(did, message, signature)
 
         // Check for an invalid address
-        if (!address) {
+        if (!signingAddress) {
             return false;
         }
         
-        let signingAddress = ethers.utils.verifyMessage(message, signature);
-        let response = basicAuth.safeCompare(signingAddress.toLowerCase(), address.toLowerCase());
-        return response;
+        return true;
     }
 
     getUnauthorizedResponse(req) {
