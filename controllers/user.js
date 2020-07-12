@@ -3,7 +3,7 @@ import DbManager from '../components/dbManager';
 import Utils from "../components/utils";
 
 class UserController {
-    // TODO: Enforce HTTPS
+    // @todo: Enforce HTTPS
 
     async get(req, res) {
         let signature = req.auth.password;
