@@ -1,11 +1,11 @@
 {
   "name": "verida-datastore-server",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Verida Datastore middlewhere that manages users and permissions on the underlying CouchDB storage engine",
-  "main": "server.js",
+  "main": "src/server.js",
   "scripts": {
     "test": "mocha -mocha --require @babel/polyfill --require @babel/register './test/**/*.js'",
-    "start": "nodemon --exec babel-node server.js"
+    "start": "nodemon --exec babel-node src/server.js"
   },
   "repository": {
     "type": "git",
