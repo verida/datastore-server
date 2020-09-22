@@ -1,51 +1,60 @@
 var assert = require("assert");
 require('dotenv').config();
 
-import DbManager from "../components/dbManager";
-import UserManager from "../components/userManager";
-import expressBasicAuth from "express-basic-auth";
+import DbManager from "../src/components/dbManager";
+import UserManager from "../src/components/userManager";
+import Utils from "../src/components/utils";
+
 const CouchDb = require('nano');
 
 describe("Permissions", function() {
     var ownerUser, userUser, user2User, publicUser;
     var ownerDb, userDb, user2Db, publicDb;
-    var testDbName = "testdb";
+    var testDbName = "testdb1";
+    var applicationName = "testApp";
+
+    var ownerDid = "test-owner";
+    var userDid = "test-user";
+    var user2Did = "test-user2";
+
+    var ownerName = Utils.generateUsername(ownerDid, applicationName);
+    var userName = Utils.generateUsername(userDid, applicationName);
+    var user2Name = Utils.generateUsername(user2Did, applicationName);
 
     this.beforeAll(async function() {
         // The "owner" of a database
-        UserManager.create("test-owner", "test-owner");
-        ownerUser = await UserManager.getByUsername("test-owner", "test-owner");
+        await UserManager.create(ownerName, "test-owner");
+        ownerUser = await UserManager.getByUsername(ownerName, "test-owner");
 
         // Another user that isn't an "owner"
-        UserManager.create("test-user", "test-user");
-        userUser = await UserManager.getByUsername("test-user", "test-user");
+        await UserManager.create(userName, "test-user");
+        userUser = await UserManager.getByUsername(userName, "test-user");
 
         // A second user that isn't an "owner"
-        UserManager.create("test-user2", "test-user2");
-        user2User = await UserManager.getByUsername("test-user2", "test-user2");
+        await UserManager.create(user2Name, "test-user2");
+        user2User = await UserManager.getByUsername(user2Name, "test-user2");
 
         // A public user
-        UserManager.create(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS);
-        publicUser = await UserManager.getByUsername(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS);
+        await UserManager.ensurePublicUser();
     });
 
     describe("Owner (Read and Write)", async function() {
         this.beforeAll(async function() {
             // Create test database where only owner can read and write
-            await DbManager.createDatabase(ownerUser.username, testDbName, {
+            await DbManager.createDatabase(ownerUser.username, testDbName, applicationName, {
                 permissions: {
                     write: "owner",
                     read: "owner"
                 }
             });
 
-            let couchDb = new CouchDb(ownerUser.dsn);
+            let couchDb = new CouchDb({ url: ownerUser.dsn, requestDefaults: { rejectUnauthorized: false }});
             ownerDb = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(userUser.dsn);
+            couchDb = new CouchDb({ url: userUser.dsn, requestDefaults: { rejectUnauthorized: false }});
             userDb = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(publicUser.dsn);
+            couchDb = new CouchDb({ url: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS), requestDefaults: { rejectUnauthorized: false }});
             publicDb = couchDb.use(testDbName);
         })
         
@@ -105,17 +114,17 @@ describe("Permissions", function() {
     describe("Public (Read, not Write)", async function() {
         this.beforeAll(async function() {
             // Create test database where public can read, but not write
-            await DbManager.createDatabase(ownerUser.username, testDbName, {
+            await DbManager.createDatabase(ownerUser.username, testDbName, applicationName, {
                 permissions: {
                     write: "owner",
                     read: "public"
                 }
             });
 
-            let couchDb = new CouchDb(ownerUser.dsn);
+            let couchDb = new CouchDb({ url: ownerUser.dsn, requestDefaults: { rejectUnauthorized: false }});
             ownerDb = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(publicUser.dsn);
+            couchDb = new CouchDb({ url: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS), requestDefaults: { rejectUnauthorized: false }});
             publicDb = couchDb.use(testDbName);
         });
 
@@ -157,17 +166,17 @@ describe("Permissions", function() {
     describe("Public (Write, not Read)", async function() {
         this.beforeAll(async function() {
             // Create test database where public can write, but not read
-            await DbManager.createDatabase(ownerUser.username, testDbName, {
+            await DbManager.createDatabase(ownerUser.username, testDbName, applicationName, {
                 permissions: {
                     write: "public",
                     read: "owner"
                 }
             });
 
-            let couchDb = new CouchDb(ownerUser.dsn);
+            let couchDb = new CouchDb({ url: ownerUser.dsn, requestDefaults: { rejectUnauthorized: false }});
             ownerDb = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(publicUser.dsn);
+            couchDb = new CouchDb({ url: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS), requestDefaults: { rejectUnauthorized: false }});
             publicDb = couchDb.use(testDbName);
         });
 
@@ -219,28 +228,29 @@ describe("Permissions", function() {
     describe("User (Read, not Write)", async function() {
         this.beforeAll(async function() {
             // Create test database where a list of users can write and read
-            await DbManager.createDatabase(ownerUser.username, testDbName, {
+            await DbManager.createDatabase(ownerUser.username, testDbName, applicationName, {
                 permissions: {
-                    write: "user",
-                    writeList: [userUser.username, user2User.username],
-                    read: "user",
-                    readList: [userUser.username, user2User.username]
+                    write: "users",
+                    writeList: [userDid, user2Did],
+                    read: "users",
+                    readList: [userDid, user2Did]
                 }
             });
 
-            let couchDb = new CouchDb(ownerUser.dsn);
+            let couchDb = new CouchDb({ url: ownerUser.dsn, requestDefaults: { rejectUnauthorized: false }});
             ownerDb = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(userUser.dsn);
+            couchDb = new CouchDb({ url: userUser.dsn, requestDefaults: { rejectUnauthorized: false }});
             userDb = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(user2User.dsn);
+            couchDb = new CouchDb({ url: user2User.dsn, requestDefaults: { rejectUnauthorized: false }});
             user2Db = couchDb.use(testDbName);
 
-            couchDb = new CouchDb(publicUser.dsn);
+            couchDb = new CouchDb({ url: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS), requestDefaults: { rejectUnauthorized: false }});
             publicDb = couchDb.use(testDbName);
         });
 
+        // owner checks
         it("should allow owner to write data", async function() {
             // Write a test record
             let response = await ownerDb.insert({
@@ -254,6 +264,8 @@ describe("Permissions", function() {
             let doc = await ownerDb.get("owner-write");
             assert.equal(doc._id, "owner-write");
         });
+
+        // public checks
         it("shouldn't allow public to write data", async function() {
             // Write a test record that fails
             await assert.rejects(publicDb.insert({
@@ -270,6 +282,8 @@ describe("Permissions", function() {
                 reason: "You are not allowed to access this db."
             });
         });
+
+        // user checks
         it("should allow users to write data", async function() {
             // Write a test record
             let response = await userDb.insert({
@@ -295,12 +309,72 @@ describe("Permissions", function() {
             assert.equal(doc2._id, "owner-write");
         });
 
-        // TODO: Support updating the list of valid users
-
         this.afterAll(async function() {
             // Delete test database
             let response = await DbManager.deleteDatabase(testDbName);
         });
+    });
+
+    // Test updating permissions correcty updates the list of valid users
+    describe("User update permissions", async function() {
+        this.beforeAll(async function() {
+            // Create test database where a list of users can write and read
+            await DbManager.createDatabase(ownerUser.username, testDbName, applicationName, {
+                permissions: {
+                    write: "users",
+                    writeList: [userDid],
+                    read: "users",
+                    readList: [userDid]
+                }
+            });
+
+            let couchDb = new CouchDb({ url: ownerUser.dsn, requestDefaults: { rejectUnauthorized: false }});
+            ownerDb = couchDb.use(testDbName);
+
+            couchDb = new CouchDb({ url: userUser.dsn, requestDefaults: { rejectUnauthorized: false }});
+            userDb = couchDb.use(testDbName);
+
+            couchDb = new CouchDb({ url: user2User.dsn, requestDefaults: { rejectUnauthorized: false }});
+            user2Db = couchDb.use(testDbName);
+
+            couchDb = new CouchDb({ url: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS), requestDefaults: { rejectUnauthorized: false }});
+            publicDb = couchDb.use(testDbName);
+
+            await DbManager.updateDatabase(ownerUser.username, testDbName, applicationName, {
+                permissions: {
+                    write: "users",
+                    writeList: [userDid, user2Did],
+                    read: "users",
+                    readList: [userDid, user2Did]
+                }
+            });
+        });
+
+        it("should allow owner to write data", async function() {
+            // Write a test record
+            let response = await ownerDb.insert({
+                "_id": "owner-write",
+                "hello": "world"
+            });
+
+            assert.equal(response.ok, true);
+        });
+
+        it("should allow user2 to write data", async function() {
+            let response = await user2Db.insert({
+                "_id": "user-write",
+                "hello": "world"
+            });
+
+            assert.equal(response.ok, true);
+        });
+
+        it("should allow user2 to read data", async function() {
+            let doc = await user2Db.get("owner-write");
+            assert.equal(doc._id, "owner-write");
+        });
+
+
     });
 
     after(async function() {

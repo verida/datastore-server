@@ -36,6 +36,20 @@ class DbManager {
         return true;
     }
 
+    async updateDatabase(username, databaseName, applicationName, options) {
+        const couch = this._getCouch();
+        const db = couch.db.use(databaseName);
+
+        try {
+            await this.configurePermissions(db, username, applicationName, options.permissions);
+        } catch (err) {
+            console.log("configure error");
+            console.log(err);
+        }
+
+        return true;
+    }
+
     async deleteDatabase(databaseName) {
         let couch = this._getCouch();
 
@@ -97,18 +111,24 @@ class DbManager {
         };
 
         // Insert security document to ensure owner is the admin and any other read / write users can access the database
-        await db.insert(securityDoc, "_security");
-
-        // TODO: Support updating the list of valid users
+        try {
+            await this._insertOrUpdate(db, securityDoc, '_security');
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
 
         // Create validation document so only owner users in the write list can write to the database
         let writeUsersJson = JSON.stringify(writeUsers);
         let deleteUsersJson = JSON.stringify(deleteUsers);
 
         try {
-            await db.insert({
-                "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+writeUsersJson+".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}"
-            }, "_design/only_permit_write_users");
+            const writeFunction = "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if (" + writeUsersJson + ".indexOf(userCtx.name) == -1) throw({ unauthorized: 'User is not permitted to write to database' });\n}";
+            const writeDoc = {
+                "validate_doc_update": writeFunction
+            };
+
+            await this._insertOrUpdate(db, writeDoc, '_design/only_permit_write_users');
         } catch (err) {
             // CouchDB throws a document update conflict without any obvious reason
             if (err.reason != "Document update conflict.") {
@@ -119,9 +139,12 @@ class DbManager {
         if (permissions.write == "public") {
             // If the public has write permissions, disable public from deleting records
             try {
-                await db.insert({
-                    "validate_doc_update": "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+deleteUsersJson+".indexOf(userCtx.name) == -1 && newDoc._deleted) throw({ unauthorized: 'User is not permitted to delete from database' });\n}"
-                }, "_design/disable_public_delete");
+                const deleteFunction = "\n    function(newDoc, oldDoc, userCtx, secObj) {\n        if ("+deleteUsersJson+".indexOf(userCtx.name) == -1 && newDoc._deleted) throw({ unauthorized: 'User is not permitted to delete from database' });\n}";
+                const deleteDoc = {
+                    "validate_doc_update": deleteFunction
+                };
+
+                await this._insertOrUpdate(db, deleteDoc, '_design/disable_public_delete');
             } catch (err) {
                 // CouchDB throws a document update conflict without any obvious reason
                 if (err.reason != "Document update conflict.") {
@@ -133,6 +156,35 @@ class DbManager {
         return true;
     }
 
+    /**
+     * Insert an entry, or update if it already exists
+     * @param {*} db 
+     * @param {*} newDoc 
+     * @param {*} id 
+     */
+    async _insertOrUpdate(db, newDoc, id) {
+        let doc = {};
+
+        try {
+            doc = await db.get(id);
+        } catch (err) {
+            if (err.reason != "missing") {
+                throw err;
+            }
+        }
+
+        if (doc._rev) {
+            newDoc._rev = doc._rev;
+            newDoc._id = id;
+            return db.insert(newDoc);
+        } else {
+            return db.insert(newDoc, id);
+        }
+    }
+
+    /**
+     * Get a couch db instance
+     */
     _getCouch() {
         let dsn = this.buildDsn(process.env.DB_USER, process.env.DB_PASS);
 
@@ -148,6 +200,11 @@ class DbManager {
         return this._couch;
     }
 
+    /**
+     * Build a DSN for a username / password combination
+     * @param {*} username 
+     * @param {*} password 
+     */
     buildDsn(username, password) {
         let env = process.env;
         return env.DB_PROTOCOL + "://" + username + ":" + password + "@" + env.DB_HOST + ":" + env.DB_PORT;

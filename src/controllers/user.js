@@ -105,6 +105,35 @@ class UserController {
         }
     }
 
+    // Update permissions on a user's database
+    async updateDatabase(req, res) {
+        let username = Utils.generateUsernameFromRequest(req);
+        let databaseName = req.body.databaseName;
+        let options = req.body.options ? req.body.options : {};
+
+        let success;
+        try {
+            success = await DbManager.updateDatabase(username, databaseName, req.headers['application-name'], options);
+        } catch (err) {
+            return res.status(400).send({
+                status: "fail",
+                message: err.error + ": " + err.reason
+            });
+        }
+
+        if (success) {
+            return res.status(200).send({
+                status: "success"
+            });
+        }
+        else {
+            return res.status(400).send({
+                status: "fail",
+                message: "Unknown error"
+            });
+        }
+    }
+
 }
 
 const userController = new UserController();
