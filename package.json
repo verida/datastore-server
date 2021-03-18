@@ -1,6 +1,6 @@
 {
   "name": "verida-datastore-server",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Verida Datastore middlewhere that manages users and permissions on the underlying CouchDB storage engine",
   "main": "src/server.js",
   "scripts": {
@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/verida/datastore-server/README.md",
   "dependencies": {
-    "@verida/did-helper": "^0.7.0",
+    "@verida/did-helper": "^0.7.1",
     "body-parser": "^1.19.0",
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
