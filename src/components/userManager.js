@@ -17,8 +17,8 @@ class UserManager {
         let usersDb = couch.db.use('_users');
 
         try {
-            let response = await usersDb.get('org.couchdb.user:' + username);
-            let password = crypto.createHash('sha256').update(signature).digest("hex");
+            let response = await usersDb.get('org.couchdb.user:' + username)
+            let password = crypto.createHash('sha256').update(signature).digest("hex")
             return {
                 username: username,
                 dsn: this.buildDsn(username, password),
@@ -31,8 +31,8 @@ class UserManager {
     }
 
     async create(username, signature) {
-        let couch = this._getCouch();
-        let password = crypto.createHash('sha256').update(signature).digest("hex");
+        let couch = this._getCouch()
+        let password = crypto.createHash('sha256').update(signature).digest("hex")
 
         // Create CouchDB database user matching username and password
         let userData = {
