@@ -8,18 +8,20 @@ import Utils from "../src/components/utils";
 const CouchDb = require('nano');
 
 describe("Permissions", function() {
-    var ownerUser, userUser, user2User, publicUser;
-    var ownerDb, userDb, user2Db, publicDb;
+    var ownerUser, userUser, user2User, user3User;
+    var ownerDb, userDb, user2Db, user3Db, publicDb;
     var testDbName = "testdb1";
     var applicationName = "testApp";
 
     var ownerDid = "test-owner";
     var userDid = "test-user";
     var user2Did = "test-user2";
+    var user3Did = "test-user3";
 
     var ownerName = Utils.generateUsername(ownerDid, applicationName);
     var userName = Utils.generateUsername(userDid, applicationName);
     var user2Name = Utils.generateUsername(user2Did, applicationName);
+    var user3Name = Utils.generateUsername(user3Did, applicationName);
 
     this.beforeAll(async function() {
         // The "owner" of a database
@@ -33,6 +35,10 @@ describe("Permissions", function() {
         // A second user that isn't an "owner"
         await UserManager.create(user2Name, "test-user2");
         user2User = await UserManager.getByUsername(user2Name, "test-user2");
+
+        // A third user that has no access
+        await UserManager.create(user3Name, "test-user3");
+        user3User = await UserManager.getByUsername(user3Name, "test-user3");
 
         // A public user
         await UserManager.ensurePublicUser();
@@ -246,6 +252,9 @@ describe("Permissions", function() {
             couchDb = new CouchDb({ url: user2User.dsn, requestDefaults: { rejectUnauthorized: false }});
             user2Db = couchDb.use(testDbName);
 
+            couchDb = new CouchDb({ url: user3User.dsn, requestDefaults: { rejectUnauthorized: false }});
+            user3Db = couchDb.use(testDbName);
+
             couchDb = new CouchDb({ url: UserManager.buildDsn(process.env.DB_PUBLIC_USER, process.env.DB_PUBLIC_PASS), requestDefaults: { rejectUnauthorized: false }});
             publicDb = couchDb.use(testDbName);
         });
@@ -276,6 +285,7 @@ describe("Permissions", function() {
                 reason: "You are not allowed to access this db."
             });
         });
+
         it("shouldn't allow public to read data", async function() {
             await assert.rejects(publicDb.get("owner-write"), {
                 name: "Error",
@@ -307,6 +317,24 @@ describe("Permissions", function() {
 
             let doc2 = await user2Db.get("owner-write");
             assert.equal(doc2._id, "owner-write");
+        });
+
+        it("shouldn't allow non-permissioned users to write data", async function() {
+            // Write a test record that fails
+            await assert.rejects(user3Db.insert({
+                "_id": "user-write",
+                "hello": "world"
+            }), {
+                name: "Error",
+                reason: "You are not allowed to access this db."
+            });
+        });
+
+        it("shouldn't allow non-permissioned users to read data", async function() {
+            await assert.rejects(user3Db.get("user-write"), {
+                name: "Error",
+                reason: "You are not allowed to access this db."
+            });
         });
 
         this.afterAll(async function() {
