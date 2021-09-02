@@ -10,8 +10,8 @@ class Utils {
     }
 
     generateUsername(did, applicationName) {
-        let hash = crypto.createHmac('sha256', process.env.HASH_KEY);
-        hash.update(did + "/" + applicationName);
+        let hash = crypto.createHmac('sha256', process.env.HASH_KEY)
+        hash.update(did + "/" + applicationName)
         const username = hash.digest('hex')
 
         // Username must start with a letter
@@ -26,7 +26,7 @@ class Utils {
         let usernames = [];
         for (var d in dids) {
             let did = dids[d];
-            usernames.push(this.generateUsername(did, applicationName));
+            usernames.push(this.generateUsername(did, applicationName))
         }
 
         return usernames;

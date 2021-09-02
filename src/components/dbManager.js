@@ -105,6 +105,7 @@ class DbManager {
                 roles: []
             },
             members: {
+                // this grants read access to all members
                 names: dbMembers,
                 roles: []
             }
