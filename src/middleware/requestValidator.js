@@ -4,7 +4,7 @@ import { Resolver } from 'did-resolver'
 import CeramicClient from '@ceramicnetwork/http-client'
 import { DID } from 'dids'
 
-const CERAMIC_URL = 'http://localhost:7007'
+const { CERAMIC_URL }  = process.env
 
 class RequestValidator {
 
