@@ -20,10 +20,11 @@ class RequestValidator {
      */
     authorize(did, signature, req, cb) {
         did = did.replace(/_/g, ":")
+        const cacheKey = `${did}/${req.headers['application-name']}`
 
         const authCheck = async () => {
             try {
-                let result = mcache.get(did)
+                let result = mcache.get(cacheKey)
 
                 if (!result) {
                     if (!didHelper) {
@@ -36,7 +37,7 @@ class RequestValidator {
 
                     result = await didHelper.verifyJWS(signature)
                     const { DID_CACHE_DURATION }  = process.env
-                    mcache.put(did, result, DID_CACHE_DURATION * 1000)
+                    mcache.put(cacheKey, result, DID_CACHE_DURATION * 1000)
                 }
 
                 const storageContext = req.headers['application-name']
