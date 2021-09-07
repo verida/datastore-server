@@ -3,6 +3,9 @@ import ThreeIdResolver from '@ceramicnetwork/3id-did-resolver'
 import { Resolver } from 'did-resolver'
 import CeramicClient from '@ceramicnetwork/http-client'
 import { DID } from 'dids'
+const mcache = require("memory-cache")
+
+let didHelper
 
 class RequestValidator {
 
@@ -20,13 +23,21 @@ class RequestValidator {
 
         const authCheck = async () => {
             try {
-                const { CERAMIC_URL }  = process.env
-                const ceramic = new CeramicClient(CERAMIC_URL)
-                const threeIdResolver = await ThreeIdResolver.getResolver(ceramic)
-                const resolver = new Resolver(threeIdResolver)
+                let result = mcache.get(did)
 
-                const didHelper = new DID({ resolver })
-                const result = await didHelper.verifyJWS(signature)
+                if (!result) {
+                    if (!didHelper) {
+                        const { CERAMIC_URL }  = process.env
+                        const ceramic = new CeramicClient(CERAMIC_URL)
+                        const threeIdResolver = await ThreeIdResolver.getResolver(ceramic)
+                        const resolver = new Resolver(threeIdResolver)
+                        didHelper = new DID({ resolver })
+                    }
+
+                    result = await didHelper.verifyJWS(signature)
+                    const { DID_CACHE_DURATION }  = process.env
+                    mcache.put(did, result, DID_CACHE_DURATION * 1000)
+                }
 
                 const storageContext = req.headers['application-name']
                 const consentMessage = `Do you wish to unlock this storage context: "${storageContext}"?\n\n${did}`

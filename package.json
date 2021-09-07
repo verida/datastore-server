@@ -33,6 +33,7 @@
     "express": "^4.17.1",
     "express-basic-auth": "git+https://github.com/Mozzler/express-basic-auth.git",
     "lodash": "^4.17.15",
+    "memory-cache": "^0.2.0",
     "nano": "^8.1.0",
     "nodemon": "^2.0.2"
   },
