@@ -4,8 +4,6 @@ import { Resolver } from 'did-resolver'
 import CeramicClient from '@ceramicnetwork/http-client'
 import { DID } from 'dids'
 
-const { CERAMIC_URL }  = process.env
-
 class RequestValidator {
 
     /**
@@ -17,24 +15,37 @@ class RequestValidator {
      * @param {*} password 
      * @param {*} req 
      */
-    async authorize(did, signature, req) {
-        did = did.replace(/_/g, ":");
+    authorize(did, signature, req, cb) {
+        did = did.replace(/_/g, ":")
 
-        const ceramic = new CeramicClient(CERAMIC_URL)
-        const threeIdResolver = await ThreeIdResolver.getResolver(ceramic)
-        const resolver = new Resolver(threeIdResolver)
+        const authCheck = async () => {
+            try {
+                const { CERAMIC_URL }  = process.env
+                const ceramic = new CeramicClient(CERAMIC_URL)
+                const threeIdResolver = await ThreeIdResolver.getResolver(ceramic)
+                const resolver = new Resolver(threeIdResolver)
 
-        const didHelper = new DID({ resolver })
-        const result = await didHelper.verifyJWS(signature)
+                const didHelper = new DID({ resolver })
+                const result = await didHelper.verifyJWS(signature)
 
-        const storageContext = req.headers['application-name']
-        const consentMessage = `Do you wish to unlock this storage context: "${storageContext}"?\n\n${did}`
+                const storageContext = req.headers['application-name']
+                const consentMessage = `Do you wish to unlock this storage context: "${storageContext}"?\n\n${did}`
 
-        if (!result || result.payload.message != consentMessage) {
-            return false
+                if (!result || result.payload.message != consentMessage) {
+                    cb(null, false)
+                } else {
+                    cb(null, true)
+                }
+            } catch (err) {
+                // Likeley unable to resolve DID
+                cb(null, false)
+            }
         }
 
-        return true
+        const promise = new Promise((resolve, rejects) => {
+            authCheck()
+            resolve()
+        })
     }
 
     getUnauthorizedResponse(req) {

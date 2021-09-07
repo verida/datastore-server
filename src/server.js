@@ -23,6 +23,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.get('/user/public', UserController.getPublic);
 app.use(basicAuth({
   authorizer: requestValidator.authorize,
+  authorizeAsync: true,
   unauthorizedResponse: requestValidator.getUnauthorizedResponse
 }));
 app.use(function(req, res, next) {
