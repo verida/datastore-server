@@ -1,3 +1,9 @@
+# Deprecated!
+
+This package is deprecated.
+
+See [Verida Storage Node](https://github.com/verida/storage-node).
+
 # Welcome to Verida Datastore Server
 
 This server acts as middleware between web applications built using the [Verida Datastore](http://www.github.com/verida/datastore) and the underlying databases storing user data.
