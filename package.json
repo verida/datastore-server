@@ -23,7 +23,7 @@
     "cors": "^2.8.5",
     "dotenv": "^8.2.0",
     "ethers": "^4.0.42",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "express-basic-auth": "git+https://github.com/Mozzler/express-basic-auth.git",
     "lodash": "^4.17.15",
     "nano": "^8.1.0",
